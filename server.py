@@ -54,9 +54,14 @@ def send_command():
     command = request.form["command"]
 
     if minecraft_server_process is not None:
-        minecraft_server_process.stdin.write(command + "\n")
-        minecraft_server_process.stdin.flush()
-        return jsonify(status="command_sent", server_running=True)
+        if command.find("stop") == -1:
+            minecraft_server_process.stdin.write(command + "\n")
+            minecraft_server_process.stdin.write("\n")
+            return jsonify(status="not_running", server_running=False)
+        else:
+            minecraft_server_process.stdin.write(command + "\n")
+            minecraft_server_process.stdin.flush()
+            return jsonify(status="command_sent", server_running=True)
     else:
         return jsonify(status="not_running", server_running=False)
 
