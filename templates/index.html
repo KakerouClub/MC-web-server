@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Control</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <style>
+        #output {
+            width: 100%;
+            height: 300px;
+            overflow-y: scroll;
+            background: #000;
+            color: #0f0;
+            padding: 10px;
+            font-family: monospace;
+        }
+        #status {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Server Control</h1>
+    <div id="output"></div>
+    <div id="status">Server status: <span id="server-status">Unknown</span></div>
+    <button onclick="startServer()">Start Server</button>
+    <!--<button onclick="stopServer()">Stop Server</button>-->
+    <input type="text" id="command" placeholder="Enter command">
+    <button onclick="sendCommand()">Send Command</button>
+    <h3>Most used commands:</h3>
+    <ul>
+        <li>/stop - Stops the server after it's done initializing</li>
+        <li>/list - Lists the players logged on</li>
+        <li>/kill @e[type] - Kills the entity of type "type" (type is of format modpack:entity)</li>
+        <li>/op or /deop - Makes/Unmakes player admin</li>
+        <li>/kick [name] [reason] - Kicks player [name] for [reason]</li>
+    </ul>
+    <script>
+        function updateStatus(serverRunning) {
+            const statusElement = document.getElementById('server-status');
+            statusElement.innerText = serverRunning ? 'Running' : 'Stopped';
+        }
+
+        function startServer() {
+            fetch('/start_server', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data);
+                    updateStatus(data.server_running);
+                });
+        }
+
+        function stopServer() {
+            fetch('/stop_server', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data);
+                    updateStatus(data.server_running);
+                });
+        }
+
+        function sendCommand() {
+            const command = document.getElementById('command').value;
+            fetch('/send_command', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `command=${command}`
+            })
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data);
+                    updateStatus(data.server_running);
+                });
+        }
+
+        function updateOutput() {
+            fetch('/get_output')
+                .then(response => response.json())
+                .then(data => {
+                    const output = document.getElementById('output');
+                    output.innerHTML = data.output.join('<br>');
+                    output.scrollTop = output.scrollHeight;
+                    updateStatus(data.server_running);
+                });
+        }
+
+        setInterval(updateOutput, 1000);
+    </script>
+</body>
+</html>
