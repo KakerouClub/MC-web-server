@@ -2,14 +2,12 @@ from flask import Flask, render_template, request, jsonify
 import subprocess
 import threading
 import os
-import signal
-import pyuac
 
 app = Flask(__name__)
 
-# Global variables to hold the server process and its output
 minecraft_server_process = None
 output_log = []
+log_lock = threading.Lock()
 
 
 @app.route("/")
@@ -34,7 +32,7 @@ def start_server():
         threading.Thread(target=read_output).start()
         return jsonify(status="started", server_running=True)
     else:
-        return jsonify(status="already_running", server_running=False)
+        return jsonify(status="already_running", server_running=True)
 
 
 @app.route("/stop_server", methods=["POST"])
@@ -43,9 +41,10 @@ def stop_server():
 
     if minecraft_server_process is not None:
         os.system("taskkill /f /pid " + str(minecraft_server_process.pid))
+        minecraft_server_process = None
         return jsonify(status="stopped", server_running=False)
     else:
-        return jsonify(status="not_running", server_running=True)
+        return jsonify(status="not_running", server_running=False)
 
 
 @app.route("/send_command", methods=["POST"])
@@ -54,14 +53,13 @@ def send_command():
     command = request.form["command"]
 
     if minecraft_server_process is not None:
-        if command.find("stop") != -1:
-            minecraft_server_process.stdin.write(command + "\n")
-            minecraft_server_process.stdin.write("\n")
-            return jsonify(status="not_running", server_running=False)
-        else:
-            minecraft_server_process.stdin.write(command + "\n")
-            minecraft_server_process.stdin.flush()
-            return jsonify(status="command_sent", server_running=True)
+        minecraft_server_process.stdin.write(command + "\n")
+        minecraft_server_process.stdin.flush()
+
+        if command.strip().lower() == "stop":
+            threading.Timer(1.0, reset_server_process).start()
+
+        return jsonify(status="command_sent", server_running=True)
     else:
         return jsonify(status="not_running", server_running=False)
 
@@ -69,9 +67,16 @@ def send_command():
 @app.route("/get_output", methods=["GET"])
 def get_output():
     global output_log
+    with log_lock:
+        output_copy = output_log[-100:]
     return jsonify(
-        output=output_log, server_running=(minecraft_server_process is not None)
+        output=output_copy, server_running=(minecraft_server_process is not None)
     )
+
+
+def reset_server_process():
+    global minecraft_server_process
+    minecraft_server_process = None
 
 
 def read_output():
@@ -79,9 +84,13 @@ def read_output():
     while minecraft_server_process is not None:
         output = minecraft_server_process.stdout.readline()
         if output:
-            output_log.append(output)
-            if len(output_log) > 100:
-                output_log = output_log[-100:]
+            with log_lock:
+                output_log.append(output.strip())
+                if len(output_log) > 100:
+                    output_log = output_log[-100:]
+        if minecraft_server_process.poll() is not None:
+            break
+    minecraft_server_process = None
 
 
 if __name__ == "__main__":
