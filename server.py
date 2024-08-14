@@ -1,13 +1,23 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, abort
 import subprocess
 import threading
 import os
+from time import strftime
+import logging
+from logging.handlers import RotatingFileHandler
 
 app = Flask(__name__)
 
 minecraft_server_process = None
 output_log = []
 log_lock = threading.Lock()
+ip_ban_list = [""]
+
+
+logger = logging.getLogger(__name__)
+handler = RotatingFileHandler("app.log", maxBytes=100000, backupCount=3)
+logger.setLevel(logging.INFO)
+logger.addHandler(handler)
 
 
 @app.route("/")
@@ -74,6 +84,28 @@ def get_output():
     )
 
 
+@app.after_request
+def after_request(response):
+    timestamp = strftime("[%Y-%b-%d %H:%M]")
+    logger.error(
+        "%s %s %s %s %s %s",
+        timestamp,
+        request.remote_addr,
+        request.method,
+        request.scheme,
+        request.full_path,
+        response.status,
+    )
+    return response
+
+
+@app.before_request
+def block_method():
+    ip = request.environ.get("REMOTE_ADDR")
+    if ip in ip_ban_list:
+        abort(403)
+
+
 def reset_server_process():
     global minecraft_server_process
     minecraft_server_process = None
@@ -93,5 +125,5 @@ def read_output():
     minecraft_server_process = None
 
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port="5000")
+# if __name__ == "__main__":
+# app.run(host="0.0.0.0", port="5000")
