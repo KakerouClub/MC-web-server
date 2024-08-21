@@ -165,6 +165,7 @@ def after_request(response):
 
 def reset_server_process():
     global minecraft_server_process
+    minecraft_server_process.communicate(input="SERVER CLOSING")[0]
     minecraft_server_process = None
 
 
