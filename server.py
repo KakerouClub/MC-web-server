@@ -15,6 +15,7 @@ from time import strftime
 import logging
 from logging.handlers import RotatingFileHandler
 from flask_session import Session
+from pymongo import MongoClient
 
 app = Flask(__name__)
 app.secret_key = """
@@ -40,7 +41,12 @@ app.secret_key = """
 ⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣶⣤⣄⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣰⣿⣿⣿
 ⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⣶⣶⣶⣤⣤⣤⣤⣀⣀⣤⣤⣤⣶⣾⣿⣿⣿⣿⣿
 """
-app.config["SESSION_TYPE"] = "filesystem"
+app.config["SESSION_TYPE"] = "mongodb"
+app.config["SESSION_MONGODB"] = MongoClient(
+    "mongodb+srv://test:pSvJpf5T51CJJWk2@mc-web-server.ags8p.mongodb.net/"
+)
+app.config["SESSION_MONGODB_DB"] = "web-server"
+app.config["SESSION_MONGODB_COLLECT"] = "sessions"
 Session(app)
 
 admin_pass = "lol, lmao"
