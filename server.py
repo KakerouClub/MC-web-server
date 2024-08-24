@@ -58,7 +58,11 @@ log_lock = threading.Lock()
 
 
 logger = logging.getLogger(__name__)
-handler = RotatingFileHandler("app.log", maxBytes=100000, backupCount=3)
+handler = RotatingFileHandler(
+    "G:/MC servers/Divine Journey/web server/MC-web-server/logs/app.log",
+    maxBytes=100000,
+    backupCount=3,
+)
 logger.setLevel(logging.INFO)
 logger.addHandler(handler)
 
@@ -157,7 +161,7 @@ def get_output():
 @app.after_request
 def after_request(response):
     timestamp = strftime("[%Y-%b-%d %H:%M]")
-    logger.error(
+    logger.info(
         "%s %s %s %s %s %s",
         timestamp,
         request.remote_addr,
