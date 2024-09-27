@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Server Control</title>
     <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
-    <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='styles/index.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='styles/index.css') }}">
 </head>
 
 <body>
@@ -49,6 +49,7 @@
                     console.log(data);
                     updateStatus(data.server_running);
                 });
+                document.getElementById("output").innerHTML = "";
         }
 
         function sendCommand() {
@@ -67,18 +68,14 @@
                 });
         }
 
-        function updateOutput() {
-            fetch('/get_output')
-                .then(response => response.json())
-                .then(data => {
-                    const output = document.getElementById('output');
-                    output.innerHTML = data.output.join('<br>');
-                    output.scrollTop = output.scrollHeight;
-                    updateStatus(data.server_running);
-                });
-        }
-
-        setInterval(updateOutput, 1000);
+        const eventSource = new EventSource('/stream_output');
+        eventSource.onmessage = function (event) {
+            const data = JSON.parse(event.data);
+            const output = document.getElementById('output');
+            output.innerHTML = data.output.join('<br>');
+            output.scrollTop = output.scrollHeight;
+            updateStatus(data.server_running);
+        };
     </script>
 </body>
 

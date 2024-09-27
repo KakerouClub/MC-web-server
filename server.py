@@ -11,11 +11,14 @@ from flask import (
 import subprocess
 import threading
 import os
+import json
 from time import strftime
 import logging
 from logging.handlers import RotatingFileHandler
 from flask_session import Session
 from pymongo import MongoClient
+from flask import Response
+import time
 
 app = Flask(__name__)
 app.secret_key = """
@@ -140,8 +143,9 @@ def send_command():
         minecraft_server_process.stdin.write(command + "\n")
         minecraft_server_process.stdin.flush()
 
-        if command.strip().lower() == "stop":
-            threading.Timer(1.0, reset_server_process).start()
+        if command.lower().find("stop") != -1:
+            minecraft_server_process.communicate("SERVER CLOSED")[0]
+            minecraft_server_process = None
 
         return jsonify(status="command_sent", server_running=True)
     else:
@@ -173,12 +177,6 @@ def after_request(response):
     return response
 
 
-def reset_server_process():
-    global minecraft_server_process
-    minecraft_server_process.communicate(input="SERVER CLOSING")[0]
-    minecraft_server_process = None
-
-
 def read_output():
     global minecraft_server_process, output_log
     while minecraft_server_process is not None:
@@ -191,6 +189,18 @@ def read_output():
         if minecraft_server_process.poll() is not None:
             break
     minecraft_server_process = None
+
+
+@app.route("/stream_output")
+def stream_output():
+    def event_stream():
+        while True:
+            time.sleep(1)
+            with log_lock:
+                output_copy = output_log[-100:]
+            yield f"data: {json.dumps({'output': output_copy, 'server_running': minecraft_server_process is not None})}\n\n"
+
+    return Response(event_stream(), content_type="text/event-stream")
 
 
 # if __name__ == "__main__":
