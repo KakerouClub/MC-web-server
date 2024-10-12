@@ -12,9 +12,8 @@
 <body>
     <h1>Server Control</h1>
     <div id="output"></div>
-    <div id="status">Server status: <span id="server-status">Unknown</span></div>
+    <div>Server status: <span id="server-status">Unknown</span></div>
     <button onclick="startServer()">Start Server</button>
-    <!--<button onclick="stopServer()">Stop Server</button>-->
     <input type="text" id="command" placeholder="Enter command">
     <button onclick="sendCommand()">Send Command</button>
 
@@ -27,13 +26,17 @@
         <li><strong>/kick [name] [reason]</strong> - Kicks player [name] for [reason]</li>
     </ul>
 
+    <button onclick="window.location.href='/stats'"> Catan scoreboard </button>
+
     <script>
-        function updateStatus(serverRunning) {
+        function updateStatus(serverRunning) 
+        {
             const statusElement = document.getElementById('server-status');
             statusElement.innerText = serverRunning ? 'Running' : 'Stopped';
         }
 
-        function startServer() {
+        function startServer() 
+        {
             fetch('/start_server', { method: 'POST' })
                 .then(response => response.json())
                 .then(data => {
@@ -42,7 +45,8 @@
                 });
         }
 
-        function stopServer() {
+        function stopServer() 
+        {
             fetch('/stop_server', { method: 'POST' })
                 .then(response => response.json())
                 .then(data => {
@@ -52,7 +56,8 @@
                 document.getElementById("output").innerHTML = "";
         }
 
-        function sendCommand() {
+        function sendCommand() 
+        {
             const command = document.getElementById('command').value;
             fetch('/send_command', {
                 method: 'POST',

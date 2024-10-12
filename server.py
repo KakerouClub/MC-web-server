@@ -19,6 +19,7 @@ from flask_session import Session
 from pymongo import MongoClient
 from flask import Response
 import time
+from flask_pymongo import PyMongo
 
 app = Flask(__name__)
 app.secret_key = """
@@ -52,11 +53,21 @@ app.config["SESSION_MONGODB_DB"] = "web-server"
 app.config["SESSION_MONGODB_COLLECT"] = "sessions"
 Session(app)
 
-admin_pass = "lol, lmao"
+app.config["MONGO_URI"] = (
+    "mongodb+srv://test:pSvJpf5T51CJJWk2@mc-web-server.ags8p.mongodb.net/web-server"
+)
+mongo = PyMongo(app)
+
+admin_pass = open("password.txt", "r")
 
 
 minecraft_server_process = None
 output_log = []
+default_players = [
+    {"name": "Radu", "wins": 3, "winrate": 0},
+    {"name": "Sandu", "wins": 1, "winrate": 0},
+    {"name": "George", "wins": 0, "winrate": 0},
+]
 log_lock = threading.Lock()
 
 
@@ -143,7 +154,7 @@ def send_command():
         minecraft_server_process.stdin.write(command + "\n")
         minecraft_server_process.stdin.flush()
 
-        if command.lower().find("stop") != -1:
+        if command.lower().find("stop") != -1 and command.lower().find("debug") == -1:
             minecraft_server_process.communicate("SERVER CLOSED")[0]
             minecraft_server_process = None
 
@@ -183,9 +194,10 @@ def read_output():
         output = minecraft_server_process.stdout.readline()
         if output:
             with log_lock:
-                output_log.append(output.strip())
-                if len(output_log) > 100:
-                    output_log = output_log[-100:]
+                if "get_output" not in output:
+                    output_log.append(output.strip())
+                    if len(output_log) > 100:
+                        output_log = output_log[-100:]
         if minecraft_server_process.poll() is not None:
             break
     minecraft_server_process = None
@@ -203,5 +215,40 @@ def stream_output():
     return Response(event_stream(), content_type="text/event-stream")
 
 
-# if __name__ == "__main__":
-# app.run(host="0.0.0.0", port="5000")
+@app.route("/get_player_data", methods=["GET"])
+def get_player_data():
+    player_collection = mongo.db.players
+    players = list(player_collection.find())
+
+    if not players:
+        player_collection.insert_many(default_players)
+        players = list(player_collection.find())
+
+    totalGames = sum(player["wins"] for player in players)
+
+    for player in players:
+        player["_id"] = str(player["_id"])
+        if totalGames > 0:
+            player["winrate"] = (player["wins"] / totalGames) * 100
+        else:
+            player["winrate"] = 0
+
+    return jsonify(players)
+
+
+@app.route("/save_player_data", methods=["POST"])
+def save_player_data():
+    player_collection = mongo.db.players
+    data = request.json
+
+    for player in data:
+        player_collection.update_one(
+            {"name": player["name"]}, {"$set": {"wins": player["wins"]}}
+        )
+
+    return jsonify({"status": "success"})
+
+
+@app.route("/stats")
+def stats():
+    return render_template("stats.html")

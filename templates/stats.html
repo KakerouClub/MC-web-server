@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Player Stats</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles/stats.css') }}">
+</head>
+
+<body>
+    <h1>Player Stats</h1>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Wins</th>
+                <th>Winrate (%)</th>
+            </tr>
+        </thead>
+        <tbody id="player-rows">
+        </tbody>
+    </table>
+
+    <button onclick="window.location.href='/control_panel'">Server Control</button>
+    <button id="edit-button" onclick="toggleEdit()">Edit Wins</button>
+    <button id="save-button" onclick="saveData()" style="display: none;">Save</button>
+
+    <script>
+        function toggleEdit() 
+        {
+            const isReadOnly = document.querySelector('.wins-input').hasAttribute('readonly');
+            const inputs = document.querySelectorAll('.wins-input');
+            const editButton = document.getElementById('edit-button');
+            const saveButton = document.getElementById('save-button');
+
+            if (isReadOnly) 
+            {
+                inputs.forEach(input => input.removeAttribute('readonly'));
+                editButton.style.display = 'none';
+                saveButton.style.display = 'inline';
+            } 
+            else 
+            {
+                inputs.forEach(input => input.setAttribute('readonly', true));
+                editButton.style.display = 'inline';
+                saveButton.style.display = 'none';
+            }
+        }
+
+
+        function updateStats(players) 
+        {
+        let maxWinrate = 0;
+        let playerWithMaxWinrate = null;
+
+
+        players.forEach(player => {
+            if (player.winrate > maxWinrate) 
+            {
+                maxWinrate = player.winrate;
+                playerWithMaxWinrate = player.name;
+            }
+        });
+
+        const tbody = document.getElementById('player-rows');
+        tbody.innerHTML = '';
+
+        players.forEach(player => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${player.name} ${player.name === playerWithMaxWinrate ? '👑' : ''}</td>
+                <td><input type="number" class="wins-input" value="${player.wins}" min="0" readonly></td>
+                <td>${player.winrate.toFixed(2)}</td>
+            `;
+            tbody.appendChild(row);
+        });
+        }
+
+
+        async function loadData() 
+        {
+            const response = await fetch('/get_player_data');
+            const players = await response.json();
+            updateStats(players);
+        }
+
+
+        async function saveData() 
+        {
+            const rows = document.querySelectorAll('#player-rows tr');
+            const data = [];
+    
+            rows.forEach(row => {
+                const name = row.querySelector('td').textContent.trim().replace('👑', '').trim();
+                const wins = parseInt(row.querySelector('.wins-input').value);
+                data.push({ name, wins });
+            });
+    
+            await fetch('/save_player_data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            });
+
+
+            toggleEdit();
+
+
+            loadData();
+        }
+
+
+        window.onload = loadData;
+    </script>
+</body>
+
+</html>
