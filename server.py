@@ -58,16 +58,11 @@ app.config["MONGO_URI"] = (
 )
 mongo = PyMongo(app)
 
-admin_pass = open("password.txt", "r")
+admin_pass = "lol, lmao"
 
 
 minecraft_server_process = None
 output_log = []
-default_players = [
-    {"name": "Radu", "wins": 3, "winrate": 0},
-    {"name": "Sandu", "wins": 1, "winrate": 0},
-    {"name": "George", "wins": 0, "winrate": 0},
-]
 log_lock = threading.Lock()
 
 
@@ -155,7 +150,6 @@ def send_command():
         minecraft_server_process.stdin.flush()
 
         if command.lower().find("stop") != -1 and command.lower().find("debug") == -1:
-            minecraft_server_process.communicate("SERVER CLOSED")[0]
             minecraft_server_process = None
 
         return jsonify(status="command_sent", server_running=True)
@@ -190,17 +184,20 @@ def after_request(response):
 
 def read_output():
     global minecraft_server_process, output_log
-    while minecraft_server_process is not None:
-        output = minecraft_server_process.stdout.readline()
-        if output:
-            with log_lock:
-                if "get_output" not in output:
-                    output_log.append(output.strip())
-                    if len(output_log) > 100:
-                        output_log = output_log[-100:]
-        if minecraft_server_process.poll() is not None:
-            break
-    minecraft_server_process = None
+    try:
+        while minecraft_server_process is not None:
+            output = minecraft_server_process.stdout.readline()
+            if output:
+                with log_lock:
+                    if "get_output" not in output:
+                        output_log.append(output.strip())
+                        if len(output_log) > 100:
+                            output_log = output_log[-100:]
+            if minecraft_server_process.poll() is not None:
+                break
+        minecraft_server_process = None
+    except:
+        output_log.append("Server closed")
 
 
 @app.route("/stream_output")
@@ -219,10 +216,6 @@ def stream_output():
 def get_player_data():
     player_collection = mongo.db.players
     players = list(player_collection.find())
-
-    if not players:
-        player_collection.insert_many(default_players)
-        players = list(player_collection.find())
 
     totalGames = sum(player["wins"] for player in players)
 

@@ -1,6 +1,6 @@
-app.log*
 __pycache__
 venv
 /flask_session
 /logs
 password.txt
+.idea
