@@ -1,4 +1,4 @@
-@MinecraftManagementAPI_HostAddress = http://localhost:5140
+@MinecraftManagementAPI_HostAddress = http://localhost:5191
 
 GET {{MinecraftManagementAPI_HostAddress}}/weatherforecast/
 Accept: application/json
