@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using MinecraftManagementAPI.Data;
+using MinecraftManagementAPI.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +14,7 @@ builder.Services.AddDbContext<DataContext>(opt =>
 {
     opt.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
+builder.Services.AddScoped<ServerService>();
 
 var app = builder.Build();
 
