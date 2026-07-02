@@ -4,6 +4,8 @@ using System.Diagnostics;
 
 namespace MinecraftManagementAPI.Controllers
 {
+    [ApiController]
+    [Route("api/[controller]")]
     public class ProcessController(ServerService serverService) : BaseApiController
     {
 
@@ -17,18 +19,24 @@ namespace MinecraftManagementAPI.Controllers
             return Ok("Process started successfully");
         }
 
-        [HttpPost("/send_command")]
-        public async Task<ActionResult> SendCommand(string command, int id, string? username = null)
-        {
-            throw new NotImplementedException();
-        }
-
         [HttpPost("/stop_server")]
         public async Task<ActionResult> StopProcess()
         {
             if (!serverService.StopProcess()) return BadRequest("Process could not be stopped");
 
             return Ok("Process has been terminated");
+        }
+
+        [HttpGet("/get_output")]
+        public async Task<ActionResult> GetConsoleOutput()
+        {
+            return Ok(serverService.GetRecentOutput());
+        }
+
+        [HttpPost("/send_command")]
+        public async Task<ActionResult> SendCommand(string command, int id, string? username = null)
+        {
+            throw new NotImplementedException();
         }
     }
 }

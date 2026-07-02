@@ -1,15 +1,19 @@
-﻿using System.Diagnostics;
+﻿using Microsoft.AspNetCore.SignalR;
+using MinecraftManagementAPI.SignalR;
+using System.Diagnostics;
 
 namespace MinecraftManagementAPI.Services
 {
-    public class ServerService
+    public class ServerService(IHubContext<ConsoleHub> hubContext)
     {
-        private Process? _ServerProcess;
-
+        private Process? _serverProcess;
+        private readonly Queue<string> _output = new();
+        private readonly int _maxLines = 200;
+        private object _lock = new object();
 
         public bool StartProcess(string path)
         {
-            _ServerProcess = new Process
+            _serverProcess = new Process
             {
                 StartInfo = new ProcessStartInfo
                 {
@@ -18,31 +22,71 @@ namespace MinecraftManagementAPI.Services
                     CreateNoWindow = false,
                     WorkingDirectory = path,
                     RedirectStandardInput = true,
-                    RedirectStandardOutput = true
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true
                 }
             };
-            bool result = _ServerProcess.Start();
+            bool result = _serverProcess.Start();
+
+            Task.Run(() => ReadStreamAsync(_serverProcess.StandardOutput));
+            Task.Run(() => ReadStreamAsync(_serverProcess.StandardError));
 
             return result;
         }
 
         public bool StopProcess()
         {
-            if (_ServerProcess == null || _ServerProcess.HasExited) return true;
+            if (_serverProcess == null || _serverProcess.HasExited) return true;
 
             try
             {
-                _ServerProcess.StandardInput.WriteLine("stop");
-                _ServerProcess.StandardInput.Flush();
+                _serverProcess.StandardInput.WriteLine("stop");
+                _serverProcess.StandardInput.Flush();
 
-                if (!_ServerProcess.WaitForExit(30000))
-                    _ServerProcess.Kill();
+                if (!_serverProcess.WaitForExit(30000))
+                    _serverProcess.Kill();
             }
             finally
             {
-                _ServerProcess = null;
+                _serverProcess = null;
             }
             return true;
+        }
+
+        private async Task ReadStreamAsync(TextReader reader)
+        {
+            try
+            {
+                while (true)
+                {
+                    var line = await reader.ReadLineAsync();
+                    if (line == null) break;
+
+                    lock (_lock)
+                    {
+                        _output.Enqueue(line);
+                        if (_output.Count > _maxLines)
+                            _output.Dequeue();
+                    }
+                    await hubContext.Clients.All.SendAsync("ReceiveOutput", line);
+                }
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                _serverProcess = null;
+            }
+        }
+
+        public IEnumerable<string> GetRecentOutput()
+        {
+            lock (_lock)
+            {
+                return _output.ToArray();
+            }
         }
     }
 }
