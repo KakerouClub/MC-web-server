@@ -1,6 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using MinecraftManagementAPI.Data;
+using MinecraftManagementAPI.Middleware;
 using MinecraftManagementAPI.Services;
+using MinecraftManagementAPI.SignalR;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,19 +19,25 @@ builder.Services.AddDbContext<DataContext>(opt =>
 });
 builder.Services.AddSingleton<ServerService>();
 builder.Services.AddSignalR();
+builder.Services.AddCors();
 
 var app = builder.Build();
+
+app.UseMiddleware<ExceptionMiddleware>();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapScalarApiReference();
 }
 
-app.UseHttpsRedirection();
+app.UseCors(x => x.AllowAnyHeader().AllowAnyMethod().AllowCredentials()
+.WithOrigins("http://localhost:4200", "https://localhost:4200"));
 
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<ConsoleHub>("hubs/output");
 
 app.Run();
