@@ -1,6 +1,5 @@
-FROM debian:bookworm-slim
+FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-noble-chiseled-extra
 
-WORKDIR /backend
 COPY ./backend .
 
 ENTRYPOINT ["./MinecraftManagementAPI"]
