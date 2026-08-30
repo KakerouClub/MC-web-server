@@ -16,6 +16,7 @@ jobs:
       contents: read
       attestations: write
       packages: write
+      artifact-metadata: write
 
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: true
