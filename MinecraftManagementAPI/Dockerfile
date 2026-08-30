@@ -1,6 +1,6 @@
 FROM debian:bookworm-slim
 
 WORKDIR /backend
-COPY /backend .
+COPY ./backend .
 
 ENTRYPOINT ["./MinecraftManagementAPI"]

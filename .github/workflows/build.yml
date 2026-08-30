@@ -22,14 +22,13 @@ jobs:
     
     steps:
       - uses: actions/checkout@v7
-
-      - name: build backend
-        uses: actions/setup-dotnet@v6
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
-      - run: |
-          cd ./MinecraftManagementAPI/MinecraftManagementAPI
-          dotnet publish MinecraftManagementAPI.csproj -c Release -r linux-x64 --self-contained true -o /backend
+          
+      - name: build backend
+        working-directory: MinecraftManagementAPI/MinecraftManagementAPI
+        run: dotnet publish MinecraftManagementAPI.csproj -c Release -r linux-x64 --self-contained true -o ${{ github.workspace }}/backend
 
       - name: login into registry
         uses: docker/login-action@v4
@@ -49,6 +48,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
+          file: ./MinecraftManagementAPI/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -56,7 +56,7 @@ jobs:
       - name: generate artifact attestation
         uses: actions/attest@v4
         with:
-          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX}}_backend
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
       
